@@ -1,0 +1,89 @@
+---
+
+- name: "({{ _username }}) Ensure user is created"
+  ansible.builtin.user:
+    name: "{{ _user.key }}"
+    comment: "{{ _user.value.fullname | default(omit) }}"
+    password: "{{ (_user.value.password | string | password_hash('sha512', _salt)) if _user.value.password is defined else omit }}"
+    update_password: always
+    group: "{{ _user.value.group | default(omit) }}"
+    groups: "{{ _user.value.groups | default(omit) }}"
+    shell: /bin/bash
+    create_home: true
+    state: present
+    system: "{{ _user.value.system | default(false) }}"
+    uid: "{{ _user.value.uid | default(omit) }}"
+  no_log: true
+
+- name: "({{ _username }}) Ensure SSH directory exists"
+  ansible.builtin.file:
+    path: "{{ _ssh_directory }}"
+    owner: "{{ _username }}"
+    group: "{{ _username }}"
+    state: directory
+    mode: "0700"
+  vars:
+    _ssh_directory_other: "/home/{{ _username }}/.ssh"
+    _ssh_directory_root: "/{{ _username }}/.ssh"
+    _ssh_directory: "{{ _ssh_directory_root if _username == 'root' else _ssh_directory_other }}"
+
+- name: "({{ _username }}) Ensure a SSH keypair is generated"
+  become: true
+  become_user: "{{ _username }}"
+  ansible.builtin.command:
+    cmd: /usr/bin/ssh-keygen -b 4096 -t rsa -f {{ _key_location }} -q -C '{{ inventory_hostname }}_{{ _username }}' -N ''
+    creates: "{{ _key_location }}*"
+  when: _user.value.ssh_key is defined and _user.value.ssh_key
+  vars:
+    _key_location_other: "/home/{{ _username }}/.ssh/id_rsa"
+    _key_location_root: "/{{ _username }}/.ssh/id_rsa"
+    _key_location: "{{ _key_location_root if _username == 'root' else _key_location_other }}"
+
+- name: "({{ _username }}) Ensure predefined SSH keys are copied"
+  ansible.builtin.copy:
+    content: "{{ _key_definition.content }}"
+    dest: "{{ _key_location }}"
+    owner: "{{ _username }}"
+    group: "{{ _username }}"
+    mode: "{{ _key_definition.mode }}"
+  loop: "{{ _all_keys }}"
+  loop_control:
+    label: "{{ _key_location }}"
+    loop_var: _key_definition
+  when: _user.value.ssh_keys is defined
+  vars:
+    _ssh_directory_other: "/home/{{ _username }}/.ssh"
+    _ssh_directory_root: "/{{ _username }}/.ssh"
+    _ssh_directory: "{{ _ssh_directory_root if _username == 'root' else _ssh_directory_other }}"
+
+    _user_ssh_keys: "{{ _user.value.ssh_keys | default({}) }}"
+    _key_definitions: "{{ _user_ssh_keys | dict2items }}"
+    _public_keys_query: "[?value.public_key].{location: join('', [key, '.pub']), mode: '0600', content: value.public_key}"
+    _private_keys_query: "[?value.private_key].{location: key, mode: '0600', content: value.private_key}"
+    _public_keys: "{{ _key_definitions | json_query(_public_keys_query) }}"
+    _private_keys: "{{ _key_definitions | json_query(_private_keys_query) }}"
+    _all_keys: "{{ _public_keys + _private_keys }}"
+
+    _key_location: "{{ _ssh_directory + '/' + _key_definition.location }}"
+
+- name: "({{ _username }}) Ensure authorized keys are set"
+  ansible.posix.authorized_key:
+    user: "{{ _username }}"
+    key: "{{ _user.value.authorized_keys | join('\n') }}"
+    state: present
+  when: _user.value.authorized_keys is defined
+  no_log: true
+
+- name: "({{ _username }}) Ensure subuid is set"
+  ansible.builtin.lineinfile:
+    path: /etc/subuid
+    regexp: "^{{ _username }}:"
+    line: "{{ _username }}:{{ _user.value.subordinate_ids.uid }}:65536"
+  when: _user.value.subordinate_ids is defined and _user.value.subordinate_ids.uid is defined
+
+- name: "({{ _username }}) Ensure subgid is set"
+  ansible.builtin.lineinfile:
+    path: /etc/subgid
+    regexp: "^{{ _username }}:"
+    line: "{{ _username }}:{{ _user.value.subordinate_ids.gid }}:65536"
+  when: _user.value.subordinate_ids is defined and _user.value.subordinate_ids.gid is defined

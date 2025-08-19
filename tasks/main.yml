@@ -1,0 +1,17 @@
+---
+
+- name: Ensure groups are created
+  ansible.builtin.group:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ _local_groups }}"
+
+- name: Setup user
+  ansible.builtin.include_tasks: setup-user.yml
+  loop: "{{ _local_users | dict2items }}"
+  loop_control:
+    label: "{{ _username }}"
+    loop_var: _user
+  vars:
+    _username: "{{ _user.key }}"
+    _salt: "{{ local_users_password_salt | string }}"

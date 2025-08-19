@@ -1,0 +1,6 @@
+---
+
+_local_groups: "{{ lookup('community.general.merge_variables', '__local_groups', initial_value=local_groups, pattern_type='suffix') }}"
+
+_subuid_file: /etc/subuid
+_subgid_file: /etc/subgid

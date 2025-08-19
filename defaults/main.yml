@@ -1,0 +1,29 @@
+---
+
+# 'local_users' must be made available as variable via e.g. the group_vars
+#local_users: {}
+#  podman:
+#    fullname: podman system user
+#    system: true                 # Optional
+#    lingering: true              # Optional
+#    podman: true                 # Optional
+#    uid: 900
+#    subordinate_ids:             # Optional
+#      uid: 65142784
+#      gid: 65142784
+#
+#  root:
+#    fullname: root
+#    password: "{{ root_user_password }}"
+#    authorized_keys:
+#      - "{{ public_key1 }}"
+#      - "{{ public_key2 }}"
+#    ssh_keys:
+#      id_rsa:
+#        public_key: "{{ root_user_public_key }}"
+#        private_key: "{{ root_user_private_key }}"
+
+# Local groups to be created
+local_groups: []
+#  - group1
+#  - group2
