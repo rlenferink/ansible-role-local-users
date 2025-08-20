@@ -23,6 +23,10 @@
 #        public_key: "{{ root_user_public_key }}"
 #        private_key: "{{ root_user_private_key }}"
 
+# The salt to use for idempotent user password generation.
+# NOTE: The length of this salt is only allowed to be 16 characters long.
+local_users_password_salt: "{{ inventory_hostname | regex_replace('-', '') | regex_replace('_', '') | truncate(16, True, '') }}"
+
 # Local groups to be created
 local_groups: []
 #  - group1

@@ -6,6 +6,7 @@ This role describes local Linux user related tasks that are managed via Ansible.
 
 * `local_users`: Local users that will be created (required).
 * `local_groups`: Local groups that will be created (default = `[]`).
+* `local_users_password_salt`: The salt to use for idempotent password generation (default = the first 16 characters of the `inventory_hostname`).
 
 In addition to the above variables, variables ending in `__local_groups` will be merged.
 
